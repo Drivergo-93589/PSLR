@@ -1,1 +1,1 @@
-# PSLR: Path-signature Based Logistic Regression Model
+# PSLR: A Semi-parametric Functional Classification Model via Path Signature Logistic Regression
