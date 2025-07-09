@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.linear_model import LogisticRegression
 
-from fun_helpers.tools import get_sigX
+from fun_helpers.tools import get_sigX, get_sigX_timeMis, data_normal
 
 
 class PSLR(object):
@@ -55,6 +55,7 @@ class PSLR(object):
         """
         sigX = get_sigX(X, self.p)
         Tilde_sigX = np.concatenate((z,sigX), axis = 1)
+        Tilde_sigX = data_normal(Tilde_sigX)
         self.reg.fit(Tilde_sigX, y)
         return self.reg
     
@@ -77,6 +78,7 @@ class PSLR(object):
         """
         sigX = get_sigX(X, self.p)
         Tilde_sigX = np.concatenate((z,sigX), axis = 1)
+        Tilde_sigX = data_normal(Tilde_sigX)
         y_pred = self.reg.predict(Tilde_sigX)
         return y_pred
     
@@ -102,6 +104,7 @@ class PSLR(object):
         """
         sigX = get_sigX(X,self.p)
         Tilde_sigX = np.concatenate((z,sigX), axis = 1)
+        Tilde_sigX = data_normal(Tilde_sigX)
         self.reg.fit(Tilde_sigX,y)
         coef = self.reg.coef_
         inner = coef * Tilde_sigX
@@ -180,7 +183,7 @@ class PSLR_Order(object):
             Dimension of scalar covariates.
 
         d : int
-            Dimension of the path (without time augmentation).
+            Dimension of the path (within time augmentation).
 
         p : int
             Signature truncation order.
@@ -249,7 +252,7 @@ class PSLR_Order(object):
 
         palette = sns.color_palette('colorblind')
 
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(4, 2.5))
         jump = 1
         for i in range(P_max + 1):
             if i in hatp:
@@ -261,11 +264,13 @@ class PSLR_Order(object):
                 jump = 1
             else:
                 jump += 1
-        ax.set(xlabel=r'$C_{pen}$', ylabel=r'$\hat{p}$')
+        ax.set_xlabel('$C_{pen}$')
+        ax.set_ylabel(r'$\hat{p}$', rotation=0, labelpad = 5)
 
-        plt.title("PSLR")
+        plt.title("PSLR Order Selection")
+        plt.grid()
         plt.show()
 
         hatp = float(input("Enter the selected hatp by slope heuristic result:"))
 
-        return hatp
+        return int(hatp)
