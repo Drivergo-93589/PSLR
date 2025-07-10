@@ -33,7 +33,7 @@ class PSLR(object):
         self.reg = LogisticRegression(solver='liblinear', penalty='l1', C = pen_lambda)
 
 
-    def fit(self, X, z, y):
+    def fit(self, X, y, z = None):
         """Fit the logistic regression model using path-signature and scalar covariates.
 
         Parameters
@@ -42,11 +42,11 @@ class PSLR(object):
             3D array of time-augmented paths. Each path is piecewise linear in R^d
             with `n_points` time steps.
 
-        z : array-like of shape (n_samples, q)
-            2D array of scalar covariates for each sample.
-
         y : array-like of shape (n_samples,)
             Binary class labels (0 or 1) for each sample.
+
+        z : array-like of shape (n_samples, q)
+            2D array of scalar covariates for each sample.
 
         Returns
         -------
@@ -54,13 +54,16 @@ class PSLR(object):
             The fitted logistic regression model.
         """
         sigX = get_sigX(X, self.p)
-        Tilde_sigX = np.concatenate((z,sigX), axis = 1)
+        if z is None :
+            Tilde_sigX = sigX
+        else:
+            Tilde_sigX = np.concatenate((z,sigX), axis = 1)
         Tilde_sigX = data_normal(Tilde_sigX)
         self.reg.fit(Tilde_sigX, y)
         return self.reg
     
 
-    def predict(self, X, z):
+    def predict(self, X, z = None):
         """Predict class labels using the fitted model.
 
         Parameters
@@ -77,13 +80,16 @@ class PSLR(object):
             Predicted class labels (0 or 1) for each sample.
         """
         sigX = get_sigX(X, self.p)
-        Tilde_sigX = np.concatenate((z,sigX), axis = 1)
+        if z is None :
+            Tilde_sigX = sigX
+        else:
+            Tilde_sigX = np.concatenate((z,sigX), axis = 1)
         Tilde_sigX = data_normal(Tilde_sigX)
         y_pred = self.reg.predict(Tilde_sigX)
         return y_pred
     
     
-    def get_loss(self, X, z, y):
+    def get_loss(self, X, y, z = None):
         """Compute average negative log-likelihood (log loss) on the dataset.
 
         Parameters
@@ -91,11 +97,11 @@ class PSLR(object):
         X : array-like of shape (n_samples, n_points, d)
             3D array of time-augmented input paths.
 
-        z : array-like of shape (n_samples, q)
-            2D array of scalar covariates.
-
         y : array-like of shape (n_samples,)
             Binary class labels (0 or 1) for each sample.
+
+        z : array-like of shape (n_samples, q)
+            2D array of scalar covariates.
 
         Returns
         -------
@@ -103,7 +109,10 @@ class PSLR(object):
             Mean negative log-likelihood (log loss) over all samples.
         """
         sigX = get_sigX(X,self.p)
-        Tilde_sigX = np.concatenate((z,sigX), axis = 1)
+        if z is None :
+            Tilde_sigX = sigX
+        else:
+            Tilde_sigX = np.concatenate((z,sigX), axis = 1)
         Tilde_sigX = data_normal(Tilde_sigX)
         self.reg.fit(Tilde_sigX,y)
         coef = self.reg.coef_
@@ -139,7 +148,7 @@ class PSLR_Order(object):
         self.rho = rho
 
 
-    def Loss(self, Pmax, X, z, y):
+    def Loss(self, Pmax, X, y, z= None):
         """Compute empirical loss for all signature orders from 0 to Pmax.
 
         Parameters
@@ -150,11 +159,11 @@ class PSLR_Order(object):
         X : array-like of shape (n_samples, n_points, d)
             Time-augmented paths.
 
-        z : array-like of shape (n_samples, q)
-            Scalar covariates.
-
         y : array-like of shape (n_samples,)
             Binary class labels.
+
+        z : array-like of shape (n_samples, q)
+            Scalar covariates.
 
         Returns
         -------
@@ -165,8 +174,8 @@ class PSLR_Order(object):
 
         for i in range(Pmax + 1):
             Model = PSLR(i, pen_lambda = self.pen_lambda)
-            Model.fit(X, z, y)
-            Loss[i] = Model.get_loss(X, z, y)
+            Model.fit(X, y, z)
+            Loss[i] = Model.get_loss(X, y, z)
 
         return Loss
 
@@ -204,7 +213,7 @@ class PSLR_Order(object):
         return Cpen * n ** (-self.rho) * np.sqrt(size_sig * np.exp(q))
     
 
-    def select_order_p(self, P_max, X, z, y, CpenMax = 1 * 10 ** 0):
+    def select_order_p(self, P_max, X, y, z = None, CpenMax = 1 * 10 ** 0):
         """Select the optimal signature order `p` using penalized loss and slope heuristic.
 
         This method computes the penalized empirical loss across signature orders `0` to `P_max`,
@@ -219,11 +228,11 @@ class PSLR_Order(object):
         X : array-like of shape (n_samples, n_points, d)
             Time-augmented paths.
 
-        z : array-like of shape (n_samples, q)
-            Scalar covariates.
-
         y : array-like of shape (n_samples,)
             Binary class labels.
+
+        z : array-like of shape (n_samples, q)
+            Scalar covariates.
 
         CpenMax : float, optional (default=1.0)
             Maximum penalty coefficient to consider in the search grid.
@@ -235,13 +244,16 @@ class PSLR_Order(object):
             based on visual inspection of the plot and slope heuristic.
         """
         num_train, _, d = X.shape
-        _, q = z.shape
+        if z is None:
+            q = 0
+            Loss = self.Loss(P_max, X, y)
+        else:
+            _, q = z.shape
+            Loss = self.Loss(P_max, X, y, z)
 
-        Loss = self.Loss(P_max, X, z, y)
 
         Cpen_values = np.linspace(0, CpenMax, 1000)
         hatp = np.zeros(len(Cpen_values))
-
 
         for i in range(len(Cpen_values)):
             pen = np.zeros(P_max + 1)
