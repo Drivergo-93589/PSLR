@@ -283,6 +283,6 @@ class PSLR_Order(object):
         plt.grid()
         plt.show()
 
-        hatp = float(input("Enter the selected hatp by slope heuristic result:"))
+        hatp = int(input("Enter the selected hatp by slope heuristic result:"))
 
-        return int(hatp)
+        return hatp
