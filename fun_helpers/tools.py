@@ -156,7 +156,7 @@ def get_sigX_timeMis(X_mis, p):
     return sigX
 
 
-def perform_bspline(X, n_knots=7, degree=3, inconsist=False):
+def perform_bspline(X, n_knots=7, degree=3, T_non_uniform=False):
     """
     Perform B-spline basis expansion on each functional sample.
 
@@ -168,7 +168,7 @@ def perform_bspline(X, n_knots=7, degree=3, inconsist=False):
     Parameters
     ----------
     X : ndarray of shape (n, npoints, d) or (n, npoints, d+1)
-        Input functional data. The last channel is used as time grid if `inconsist=True`.
+        Input functional data. The last channel is used as time grid if `T_non_uniform=True`.
         
     n_knots : int, default=7
         Number of knots used to construct the B-spline basis.
@@ -176,8 +176,8 @@ def perform_bspline(X, n_knots=7, degree=3, inconsist=False):
     degree : int, default=3
         Degree of the B-spline basis (e.g., 3 = cubic splines).
         
-    inconsist : bool, default=False
-        Whether the last dimension of `X` stores sample-specific time grids.
+    T_non_uniform : bool, default=False
+        Whether the input samples have non-uniform (per-sample) time grids.
 
     Returns
     -------
@@ -186,7 +186,7 @@ def perform_bspline(X, n_knots=7, degree=3, inconsist=False):
     """
     knots = np.linspace(0, 1, n_knots)
     n = X.shape[0]
-    dim = X.shape[2] - 1 if inconsist else X.shape[2]
+    dim = X.shape[2] - 1 if T_non_uniform else X.shape[2]
     n_basis = n_knots + degree - 2  # Adjusted for B-spline order
 
     Bsb = BSplineBasis(n_basis=n_basis, knots=knots, order=degree)
@@ -195,7 +195,7 @@ def perform_bspline(X, n_knots=7, degree=3, inconsist=False):
     for i in range(n):
         c_temp = []
         for j in range(dim):
-            if inconsist:
+            if T_non_uniform:
                 fd = FDataGrid(data_matrix=X[i, :, j], grid_points=X[i, :, -1])
             else:
                 fd = FDataGrid(data_matrix=X[i, :, j])
@@ -209,7 +209,7 @@ def perform_bspline(X, n_knots=7, degree=3, inconsist=False):
 
 
 
-def perform_fourier(X, n_basis=8, period=1, inconsist=False):
+def perform_fourier(X, n_basis=8, period=1, T_non_uniform=False):
     """
     Perform Fourier basis expansion on each functional sample.
 
@@ -220,7 +220,7 @@ def perform_fourier(X, n_basis=8, period=1, inconsist=False):
     Parameters
     ----------
     X : ndarray of shape (n, npoints, d) or (n, npoints, d+1)
-        Input functional data. The last column is treated as time if `inconsist=True`.
+        Input functional data. The last channel is used as time grid if `T_non_uniform=True`.
         
     n_basis : int, default=8
         Number of Fourier basis functions to use in the expansion.
@@ -228,8 +228,8 @@ def perform_fourier(X, n_basis=8, period=1, inconsist=False):
     period : float, default=1
         Period of the underlying signal (assumed time domain is [0, period]).
         
-    inconsist : bool, default=False
-        Whether the last column of `X` contains custom time grids.
+    T_non_uniform : bool, default=False
+        Whether the input samples have non-uniform (per-sample) time grids.
 
     Returns
     -------
@@ -237,7 +237,7 @@ def perform_fourier(X, n_basis=8, period=1, inconsist=False):
         Matrix of flattened Fourier coefficients per sample.
     """
     n = X.shape[0]
-    dim = X.shape[2] - 1 if inconsist else X.shape[2]
+    dim = X.shape[2] - 1 if T_non_uniform else X.shape[2]
 
     Fb = FourierBasis(domain_range=(0, 1), n_basis=n_basis, period=period)
     c = []
@@ -245,7 +245,7 @@ def perform_fourier(X, n_basis=8, period=1, inconsist=False):
     for i in range(n):
         c_temp = []
         for j in range(dim):
-            if inconsist:
+            if T_non_uniform:
                 fd = FDataGrid(data_matrix=X[i, :, j], grid_points=X[i, :, -1])
             else:
                 fd = FDataGrid(data_matrix=X[i, :, j])
@@ -302,7 +302,7 @@ def perform_FPCA(X, time=None, n_FPC=5):
 
 
 
-def perform_uniform_embedding(X, time_num=100, inconsist=False):
+def perform_uniform_embedding(X, time_num=100, Tincon=False):
     """
     Resample each functional path onto a uniform time grid.
 
@@ -313,14 +313,14 @@ def perform_uniform_embedding(X, time_num=100, inconsist=False):
     Parameters
     ----------
     X : ndarray or list
-        - If `inconsist=False`: ndarray of shape (n_samples, npoints, d+1), where the last channel is time.
-        - If `inconsist=True`: list of `n_samples` arrays with shape (npoints_i, d+1), where d is number of features
+        - If `Tincon=False`: ndarray of shape (n_samples, npoints, d+1), where the last channel is time.
+        - If `Tincon=True`: list of `n_samples` arrays with shape (npoints_i, d+1), where d is number of features
           and the last column is the time grid for each sample.
           
     time_num : int, default=100
         Number of points in the uniform time grid for interpolation.
         
-    inconsist : bool, default=False
+    Tincon : bool, default=False
         Whether the input samples have inconsistent (per-sample) time grids.
 
     Returns
@@ -330,7 +330,7 @@ def perform_uniform_embedding(X, time_num=100, inconsist=False):
     """
     t_uniform = np.linspace(0, 1, time_num)
 
-    if inconsist:
+    if Tincon:
         n = len(X)
         d = X[0].shape[1]
         X_new = np.zeros([n, time_num, d - 1])
